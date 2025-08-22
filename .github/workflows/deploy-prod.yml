@@ -47,4 +47,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=${{ vars.PROJECT_NAME }} --branch=${{ vars.BRANCH_PROD }} --commit-dirty=true
+          command: pages deploy dist --project-name=${{ vars.CF_PAGES_PROJECT || secrets.CF_PAGES_PROJECT }} --branch=${{ vars.CF_PAGES_BRANCH_PROD || 'production' }} --commit-dirty=true
