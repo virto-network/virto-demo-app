@@ -87,7 +87,7 @@ function App() {
         {/* @ts-ignore */}
         <virto-connect
           id="previewVirtoConnect"
-          server="/api"
+          server="https://demo.virto.one/api"
           provider-url="wss://testnet.kreivo.kippu.rocks"
           style={{ display: 'none' }}
         />

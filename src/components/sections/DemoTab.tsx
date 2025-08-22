@@ -628,7 +628,7 @@ const DemoTab: React.FC<DemoTabProps> = ({ onAuthSuccess, onAuthError }) => {
 
         <div style={{ display: isAuthenticated ? 'none' : 'block' }}>
           <VirtoConnect
-            serverUrl = '/api'
+            serverUrl = 'https://demo.virto.one/api'
             providerUrl="wss://testnet.kreivo.kippu.rocks"
             onAuthSuccess={handleAuthSuccess}
             onAuthError={handleAuthError}
