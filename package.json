@@ -14,6 +14,7 @@
     "semi": false
   },
   "dependencies": {
+    "@hookform/resolvers": "^3.3.2",
     "@noble/hashes": "^1.8.0",
     "@polkadot-api/descriptors": "file:.papi/descriptors",
     "@polkadot-api/json-rpc-provider-proxy": "^0.2.4",
@@ -48,19 +49,17 @@
     "polkadot-api": "^1.15.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-hook-form": "^7.48.2",
     "react-portal": "^4.3.0",
+    "react-router-dom": "^6.20.1",
     "react-svg": "^16.3.0",
     "react18-json-view": "^0.2.9",
     "rxjs": "^7.8.2",
     "save-as": "^0.1.8",
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",
-    "@virtonetwork/sdk": "^0.0.4-alpha.6",
-    "react-router-dom": "^6.20.1",
-    "zustand": "^4.4.7",
-    "react-hook-form": "^7.48.2",
-    "@hookform/resolvers": "^3.3.2",
-    "zod": "^3.22.4"
+    "zod": "^3.22.4",
+    "zustand": "^4.4.7"
   },
   "devDependencies": {
     "@eslint/js": "^9.31.0",
