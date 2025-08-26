@@ -1,7 +1,7 @@
 import "https://early.webawesome.com/webawesome@3.0.0-alpha.11/dist/components/dialog/dialog.js"
 import("https://cdn.jsdelivr.net/npm/virto-components@0.1.11/dist/virto-components.min.js")
 
-import SDK from "https://cdn.jsdelivr.net/npm/@virtonetwork/sdk@0.0.4-alpha.8/dist/esm/sdk.js";
+import SDK from "https://cdn.jsdelivr.net/npm/@virtonetwork/sdk@0.0.4-alpha.9/dist/esm/sdk.js";
 
 const tagFn = (fn) => (strings, ...parts) => fn(parts.reduce((tpl, value, i) => `${tpl}${strings[i]}${value}`, "").concat(strings[parts.length]))
 const html = tagFn((s) => new DOMParser().parseFromString(`<template>${s}</template>`, 'text/html').querySelector('template'));
@@ -163,7 +163,16 @@ export class VirtoConnect extends HTMLElement {
       this.sdk = new SDK({
         federate_server: this.serverUrl,
         provider_url: this.providerUrl,
-        confirmation_level: 'submitted'
+        confirmation_level: 'submitted',
+        onProviderStatusChange: (status) => {
+          // Dispatch custom event for React components to listen to
+          const customEvent = new CustomEvent('providerStatusChange', {
+            detail: status,
+            bubbles: true,
+            composed: true
+          });
+          document.dispatchEvent(customEvent);
+        }
       });
 
       this.sdk.onTransactionUpdate((event) => {
