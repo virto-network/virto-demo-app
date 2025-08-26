@@ -23,6 +23,8 @@ interface UserSession {
   sdk?: any;
 }
 
+type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
+
 const DemoTab: React.FC<DemoTabProps> = ({ onAuthSuccess, onAuthError }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentAction, setCurrentAction] = useState<ActionType>(null);
@@ -31,6 +33,9 @@ const DemoTab: React.FC<DemoTabProps> = ({ onAuthSuccess, onAuthError }) => {
   const [userAddress, setUserAddress] = useState<string>('Not connected');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
+  const [connectionMessage, setConnectionMessage] = useState<string>('Initializing connection...');
+  const [lastError, setLastError] = useState<string>('');
 
   const [transferRecipient, setTransferRecipient] = useState('');
   const [transferAmount, setTransferAmount] = useState('');
@@ -94,6 +99,56 @@ const DemoTab: React.FC<DemoTabProps> = ({ onAuthSuccess, onAuthError }) => {
       virtoConnect.removeEventListener('login-success', handleLoginSuccess);
     };
   }, [showSpinner, hideSpinner]);
+
+  // Listen for connection status changes
+  useEffect(() => {
+    const handleProviderStatusChange = (event: CustomEvent) => {
+      const status = event.detail;
+      
+      switch (status.type) {
+        case 0: // CONNECTING
+          setConnectionStatus('connecting');
+          setConnectionMessage(`Connecting to ${status.uri}...`);
+          break;
+        case 1: // CONNECTED
+          setConnectionStatus('connected');
+          setConnectionMessage(`Connected to ${status.uri}`);
+          break;
+        case 2: // ERROR
+          setConnectionStatus('error');
+          let errorMessage = 'Unknown error';
+          
+          if (status.event) {
+            if (status.event.type === 'timeout') {
+              errorMessage = 'Connection timeout';
+            } else if (status.event.message) {
+              errorMessage = status.event.message;
+            } else if (typeof status.event === 'string') {
+              errorMessage = status.event;
+            } 
+          } else if (status.uri) {
+            errorMessage = `Failed to connect to ${status.uri}`;
+          }
+          
+          setLastError(errorMessage);
+          setConnectionMessage(`Connection error: ${errorMessage}`);
+          break;
+        case 3: // CLOSE
+          setConnectionStatus('disconnected');
+          setConnectionMessage('Connection closed');
+          break;
+        default:
+          setConnectionStatus('disconnected');
+          setConnectionMessage('Disconnected');
+      }
+    };
+
+    document.addEventListener('providerStatusChange', handleProviderStatusChange as EventListener);
+
+    return () => {
+      document.removeEventListener('providerStatusChange', handleProviderStatusChange as EventListener);
+    };
+  }, []);
 
   const handleAuthSuccess = (event: any) => {
     const username = event.username;
@@ -550,6 +605,15 @@ const DemoTab: React.FC<DemoTabProps> = ({ onAuthSuccess, onAuthError }) => {
 
   return (
     <div id="demo-tab" className="tab-content">
+      <div className={`connection-status-bar ${connectionStatus}`}>
+        <div className="connection-status-indicator" />
+        <span>
+          {connectionStatus === 'connecting' && lastError ? 
+            `Retrying connection... (Last error: ${lastError})` : 
+            connectionMessage}
+        </span>
+      </div>
+
       <div className="actions-section-container">
         {!isAuthenticated && (
           <div className="how-it-works">
@@ -629,7 +693,7 @@ const DemoTab: React.FC<DemoTabProps> = ({ onAuthSuccess, onAuthError }) => {
         <div style={{ display: isAuthenticated ? 'none' : 'block' }}>
           <VirtoConnect
             serverUrl = 'https://demo.virto.one/api'
-            providerUrl="wss://testnet.kreivo.kippu.rocks"
+            providerUrl="wss://kreivopaseo.johandroid.com"
             onAuthSuccess={handleAuthSuccess}
             onAuthError={handleAuthError}
           />

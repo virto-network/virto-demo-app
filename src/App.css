@@ -2224,6 +2224,71 @@ body {
   100% { transform: rotate(360deg); }
 }
 
+/* Connection Status Bar Styles */
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+.connection-status-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.connection-status-bar.connected {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.connection-status-bar.connecting {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.connection-status-bar.error {
+  background-color: #fef2f2;
+  color: #dc2626;
+}
+
+.connection-status-bar.disconnected {
+  background-color: #f8fafc;
+  color: #64748b;
+}
+
+.connection-status-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.connection-status-bar.connected .connection-status-indicator {
+  background-color: #16a34a;
+}
+
+.connection-status-bar.connecting .connection-status-indicator {
+  background-color: #f59e0b;
+  animation: pulse 1.5s infinite;
+}
+
+.connection-status-bar.error .connection-status-indicator {
+  background-color: #ef4444;
+}
+
+.connection-status-bar.disconnected .connection-status-indicator {
+  background-color: #94a3b8;
+}
+
 .animate-slide-in {
   animation: slide-in 0.3s ease-out;
 }
