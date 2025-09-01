@@ -88,7 +88,7 @@ function App() {
         <virto-connect
           id="previewVirtoConnect"
           server="https://demo.virto.one/api"
-          provider-url="wss://kreivopaseo.johandroid.com"
+          provider-url="wss://testnet.kreivo.kippu.rocks"
           style={{ display: 'none' }}
         />
 
