@@ -9,7 +9,13 @@ const TabNavigation: React.FC<TabNavigationProps> = ({ activeTab, onTabChange })
   <div className="tab-navigation">
     <button
       className={`tab-button ${activeTab === 'demo' ? 'active' : ''}`}
-      onClick={() => onTabChange('demo')}
+      onClick={() => {
+        onTabChange('demo')
+        const connectButton = document.getElementById('connect-button');
+        if (connectButton) {
+          connectButton.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }}
     >
       Demo
     </button>
