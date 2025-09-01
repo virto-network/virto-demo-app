@@ -5,7 +5,7 @@ import type { VirtoConnectProps } from '@/types/auth.types';
 
 const VirtoConnect: React.FC<VirtoConnectProps> = ({
   serverUrl = 'https://demo.virto.one/api',
-  providerUrl = 'wss://kreivopaseo.johandroid.com',
+  providerUrl = 'wss://testnet.kreivo.kippu.rocks',
   onAuthSuccess,
   onAuthError,
 }) => {
