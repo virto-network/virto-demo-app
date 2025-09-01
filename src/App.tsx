@@ -62,8 +62,16 @@ function App() {
     <div className="app">
         <div className="container">
         <HeroSection
-          onDemoClick={() => setActiveTab('demo')}
-          onDeveloperClick={() => setActiveTab('developer')}
+          onDemoClick={() => { 
+            setActiveTab('demo');
+            const connectButton = document.getElementById('connect-button');
+            if (connectButton) {
+              connectButton.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }}
+          onDeveloperClick={() => {
+            window.open('https://ailens-organization.gitbook.io/virto-connect', '_blank');
+          }}
         />
 
         <div className="content-section" id="content-section">
