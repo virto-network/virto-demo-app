@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom/client';
 import VirtoConnect from '@/components/VirtoConnect';
+import FaucetIframe from '@/components/FaucetIframe';
 import type { User } from '@/types/auth.types';
 import { Extrinsics } from '@/pages/Extrinsics';
 import TransferForm from './TransferForm';
@@ -79,9 +81,104 @@ const DemoTab: React.FC<DemoTabProps> = ({ onAuthSuccess, onAuthError }) => {
     const handleRegisterStart = () => showSpinner('Registering...');
     const handleLoginStart = () => showSpinner('Logging in...');
     const handleRegisterError = () => hideSpinner();
-    const handleLoginError = () => hideSpinner();
+    const handleLoginError = (event: CustomEvent) => {
+      hideSpinner();
+      
+      // Check if the error is the specific payment error that indicates need for faucet
+      const error = event.detail?.error;
+      console.log('Login error received:', error);
+      
+      if (error) {
+        // Convert error to string to check for the specific error pattern
+        const errorString = error.toString ? error.toString() : JSON.stringify(error);
+        
+        // Check for InvalidTxError with Payment type
+        const isPaymentError = errorString.includes('InvalidTxError') && 
+                              errorString.includes('"type": "Invalid"') && 
+                              errorString.includes('"type": "Payment"');
+        
+        if (isPaymentError) {
+          console.log('Payment error detected, showing faucet again');
+          
+          // Get the username from the login form
+          const usernameInput = virtoConnect.shadowRoot?.querySelector('virto-input[name="username"]');
+          const username = usernameInput?.value || '';
+          
+          if (username) {
+            // Show the faucet confirmation again
+            virtoConnect.showFaucetConfirmation(username);
+          }
+        }
+      }
+    };
     const handleRegisterSuccess = () => hideSpinner();
     const handleLoginSuccess = () => hideSpinner();
+    
+    const handleFaucetIframeReady = (event: CustomEvent) => {
+      console.log('Faucet iframe ready:', event.detail);
+      const { username, address, containerId, virtoConnectElement } = event.detail;
+      
+      // Get the container where we'll render the React component
+      const container = virtoConnectElement.getFaucetContainer();
+      if (!container) {
+        console.error('Faucet container not found');
+        return;
+      }
+
+      // Create React root and render the FaucetIframe component
+      const root = ReactDOM.createRoot(container);
+      
+      const handleAccept = async () => {
+        try {
+          // Call the faucet method using the SDK
+          const sdk = virtoConnect.sdk;
+          if (!sdk) {
+            throw new Error('SDK not available');
+          }
+          
+          console.log('Calling addMember for user:', username);
+          const faucetResult = await sdk.auth.addMember(username);
+          console.log('Faucet successful:', faucetResult);
+          
+          showSuccessNotification("Welcome Bonus Processed!", "Your $100 welcome bonus has been successfully processed.");
+          
+          // Complete the flow after a short delay
+          setTimeout(() => {
+            root.unmount();
+            virtoConnectElement.completeFaucetFlowFromParent(true, faucetResult);
+          }, 1500);
+          
+          return { success: true };
+          
+        } catch (error) {
+          console.error('Faucet failed:', error);
+          const errorMessage = error instanceof Error ? error.message : 'Failed to process welcome bonus';
+          showErrorNotification("Welcome Bonus Failed", errorMessage);
+          return { success: false, error: errorMessage };
+        }
+      };
+
+      const handleDecline = () => {
+        console.log('Faucet declined');
+        root.unmount();
+        virtoConnectElement.completeFaucetFlowFromParent(false);
+      };
+
+      // Render the FaucetIframe component
+      root.render(
+        <FaucetIframe
+          username={username}
+          address={address}
+          onAccept={handleAccept}
+          onDecline={handleDecline}
+        />
+      );
+
+      // Store the cleanup function
+      virtoConnectElement.faucetCleanup = () => {
+        root.unmount();
+      };
+    };
 
     virtoConnect.addEventListener('register-start', handleRegisterStart);
     virtoConnect.addEventListener('login-start', handleLoginStart);
@@ -89,6 +186,7 @@ const DemoTab: React.FC<DemoTabProps> = ({ onAuthSuccess, onAuthError }) => {
     virtoConnect.addEventListener('login-error', handleLoginError);
     virtoConnect.addEventListener('register-success', handleRegisterSuccess);
     virtoConnect.addEventListener('login-success', handleLoginSuccess);
+    virtoConnect.addEventListener('faucet-iframe-ready', handleFaucetIframeReady);
 
     return () => {
       virtoConnect.removeEventListener('register-start', handleRegisterStart);
@@ -97,8 +195,14 @@ const DemoTab: React.FC<DemoTabProps> = ({ onAuthSuccess, onAuthError }) => {
       virtoConnect.removeEventListener('login-error', handleLoginError);
       virtoConnect.removeEventListener('register-success', handleRegisterSuccess);
       virtoConnect.removeEventListener('login-success', handleLoginSuccess);
+      virtoConnect.removeEventListener('faucet-iframe-ready', handleFaucetIframeReady);
+      
+      // Cleanup faucet listener if it exists
+      if (virtoConnect.faucetCleanup) {
+        virtoConnect.faucetCleanup();
+      }
     };
-  }, [showSpinner, hideSpinner]);
+  }, [showSpinner, hideSpinner, showSuccessNotification, showErrorNotification]);
 
   // Listen for connection status changes
   useEffect(() => {
