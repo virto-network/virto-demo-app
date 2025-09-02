@@ -1,7 +1,8 @@
 import "https://early.webawesome.com/webawesome@3.0.0-alpha.11/dist/components/dialog/dialog.js"
 import("https://cdn.jsdelivr.net/npm/virto-components@0.1.11/dist/virto-components.min.js")
 
-import SDK from "https://cdn.jsdelivr.net/npm/@virtonetwork/sdk@0.0.4-alpha.13/dist/esm/sdk.js";
+// import SDK from "https://cdn.jsdelivr.net/npm/@virtonetwork/sdk@0.0.4-alpha.13/dist/esm/sdk.js";
+import SDK from "http://localhost:8081/dist/esm/sdk.js"
 
 const tagFn = (fn) => (strings, ...parts) => fn(parts.reduce((tpl, value, i) => `${tpl}${strings[i]}${value}`, "").concat(strings[parts.length]))
 const html = tagFn((s) => new DOMParser().parseFromString(`<template>${s}</template>`, 'text/html').querySelector('template'));
@@ -79,6 +80,12 @@ virto-button {
 
 virto-input:focus {
     outline: none;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
 }
 
 `
@@ -226,8 +233,8 @@ export class VirtoConnect extends HTMLElement {
         formTemplate = registerFormTemplate;
         break;
       case "login":
-      default:
         formTemplate = loginFormTemplate;
+        
         break;
     }
 
@@ -247,6 +254,101 @@ export class VirtoConnect extends HTMLElement {
     this.updateButtons();
 
     this.updateDialogTitle();
+  }
+
+  showFaucetConfirmation(username) {
+    // Store current user data for later use
+    this.currentUsername = username;
+    
+    // Clear current content
+    this.contentSlot.innerHTML = "";
+    this.buttonsSlot.innerHTML = "";
+
+    // Create iframe container
+    const iframeContainer = document.createElement("div");
+    iframeContainer.id = "faucet-iframe-container";
+    iframeContainer.style.cssText = `
+      width: 100%;
+      min-height: 300px;
+      max-height: 400px;
+      border: 1px solid var(--lightgreen);
+      border-radius: 8px;
+      overflow: auto;
+      background: white;
+      display: flex;
+      flex-direction: column;
+    `;
+    
+    // Add iframe container to content slot
+    this.contentSlot.appendChild(iframeContainer);
+
+    // Dispatch event to parent application to handle iframe content
+    this.dispatchEvent(new CustomEvent('faucet-iframe-ready', {
+      bubbles: true,
+      detail: { 
+        username, 
+        containerId: 'faucet-iframe-container',
+        virtoConnectElement: this
+      }
+    }));
+  }
+
+  // Method to close and complete the faucet flow (called by parent application)
+  completeFaucetFlowFromParent(accepted, result = null) {
+    this.completeFaucetFlow(this.currentUsername, accepted, result);
+  }
+
+  // Method to get the iframe container (for parent application to control)
+  getFaucetContainer() {
+    return this.shadowRoot.querySelector('#faucet-iframe-container');
+  }
+
+  completeFaucetFlow(username, faucetAccepted, faucetResult = null) {
+    // Clear content and show final success message
+    this.contentSlot.innerHTML = "";
+    this.buttonsSlot.innerHTML = "";
+
+    const successMsg = document.createElement("div");
+    if (faucetAccepted && faucetResult) {
+      successMsg.textContent = "Registration successful! Your welcome bonus has been processed. You can now sign in.";
+    } else {
+      successMsg.textContent = "Registration successful! You can now sign in.";
+    }
+    successMsg.style.cssText = `
+      color: #4caf50 !important;
+      margin-bottom: 10px;
+      text-align: center;
+      padding: 1rem;
+      background: #f1f8e9;
+      border-radius: 8px;
+    `;
+
+    this.contentSlot.appendChild(successMsg);
+
+    // Create final buttons
+    const closeBtn = document.createElement("virto-button");
+    closeBtn.setAttribute("label", "Close");
+    closeBtn.addEventListener("click", () => this.close());
+    this.buttonsSlot.appendChild(closeBtn);
+
+    const signInBtn = document.createElement("virto-button");
+    signInBtn.setAttribute("label", "Sign In Now");
+    signInBtn.id = "sign-in-button";
+    signInBtn.addEventListener("click", () => {
+      this.currentFormType = "login";
+      this.renderCurrentForm();
+    });
+    this.buttonsSlot.appendChild(signInBtn);
+
+    // Dispatch final success event
+    this.dispatchEvent(new CustomEvent('register-complete', {
+      bubbles: true,
+      detail: { 
+        username, 
+        faucetAccepted, 
+        faucetResult 
+      }
+    }));
   }
 
   updateDialogTitle() {
@@ -274,11 +376,17 @@ export class VirtoConnect extends HTMLElement {
 
     const goToRegister = this.shadowRoot.querySelector("#go-to-register");
     if (goToRegister) {
-      goToRegister.addEventListener("click", (e) => {
-        e.preventDefault();
-        this.currentFormType = "register";
-        this.renderCurrentForm();
-      });
+        goToRegister.addEventListener("click", (e) => {
+          e.preventDefault();
+          this.currentFormType = "register";
+          const usernameInput = this.shadowRoot.querySelector('virto-input[name="username"]');
+          if (usernameInput) {
+            customElements.whenDefined('virto-input').then(() => {
+              usernameInput.value = "";
+            });
+          }
+          this.renderCurrentForm();
+        });
     }
   }
 
@@ -377,33 +485,12 @@ export class VirtoConnect extends HTMLElement {
       
       localStorage.setItem('lastUserId', username);
 
-      const successMsg = document.createElement("div");
-      successMsg.textContent = "Registration successful! You can now sign in.";
-      successMsg.style.color = "#4caf50";
-      successMsg.style.marginBottom = "10px";
+      // console.log("Address:", result.address);
 
-      this.contentSlot.innerHTML = "";
-      this.contentSlot.appendChild(successMsg);
+      // Show faucet confirmation instead of direct success
+      this.showFaucetConfirmation(username);
 
-      this.buttonsSlot.innerHTML = "";
-
-      const closeBtn = document.createElement("virto-button");
-      closeBtn.setAttribute("label", "Close");
-      closeBtn.addEventListener("click", () => this.close());
-      this.buttonsSlot.appendChild(closeBtn);
-
-      const signInBtn = document.createElement("virto-button");
-      signInBtn.setAttribute("label", "Sign In Now");
-      signInBtn.id = "sign-in-button";
-      signInBtn.addEventListener("click", () => {
-        this.currentFormType = "register";
-        this.renderCurrentForm();
-      });
-      this.buttonsSlot.appendChild(signInBtn);
-
-      console.log("Address:", result.address);
-
-      this.dispatchEvent(new CustomEvent('register-success', { bubbles: true, detail: { address: result.address } }));
+      this.dispatchEvent(new CustomEvent('register-success', { bubbles: true }));
     } catch (error) {
       console.error('Registration failed:', error);
 
@@ -498,6 +585,11 @@ export class VirtoConnect extends HTMLElement {
   }
 
   close() {
+    // Cleanup faucet listener if it exists
+    if (this.faucetCleanup) {
+      this.faucetCleanup();
+      this.faucetCleanup = null;
+    }
     this.dialog.open = false
   }
 
