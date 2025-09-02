@@ -116,7 +116,7 @@ const DemoTab: React.FC<DemoTabProps> = ({ onAuthSuccess, onAuthError }) => {
     
     const handleFaucetIframeReady = (event: CustomEvent) => {
       console.log('Faucet iframe ready:', event.detail);
-      const { username, address, containerId, virtoConnectElement } = event.detail;
+      const { username, address, virtoConnectElement } = event.detail;
       
       // Get the container where we'll render the React component
       const container = virtoConnectElement.getFaucetContainer();
