@@ -8,8 +8,6 @@ interface FaucetIframeProps {
 }
 
 const FaucetIframe: React.FC<FaucetIframeProps> = ({
-  username,
-  address,
   onAccept,
   onDecline
 }) => {
