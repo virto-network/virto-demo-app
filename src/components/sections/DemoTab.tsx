@@ -140,7 +140,7 @@ const DemoTab: React.FC<DemoTabProps> = ({ onAuthSuccess, onAuthError }) => {
           const faucetResult = await sdk.auth.addMember(username);
           console.log('Faucet successful:', faucetResult);
           
-          showSuccessNotification("Welcome Bonus Processed!", "Your $10 welcome bonus has been successfully processed.");
+          showSuccessNotification("Welcome Bonus Processed!", "Your $100 welcome bonus has been successfully processed.");
           
           // Complete the flow after a short delay
           setTimeout(() => {

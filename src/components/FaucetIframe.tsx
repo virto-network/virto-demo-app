@@ -84,7 +84,7 @@ const FaucetIframe: React.FC<FaucetIframeProps> = ({
         fontSize: 'clamp(0.875rem, 3vw, 1rem)',
         maxWidth: '100%'
       }}>
-        Congratulations! You've successfully registered. As a welcome bonus, you can receive $10 to start using the platform.
+        Congratulations! You can receive free tokens to start using the platform and cover transaction fees.
       </p>
       
       <div style={{
@@ -93,7 +93,7 @@ const FaucetIframe: React.FC<FaucetIframeProps> = ({
         fontWeight: 'bold',
         margin: '0 0 1.5rem 0'
       }}>
-        $10 USD
+        100 PAS
       </div>
       
       <p style={{
@@ -189,7 +189,7 @@ const FaucetIframe: React.FC<FaucetIframeProps> = ({
             }
           }}
         >
-          {success ? 'Success!' : isLoading ? 'Processing...' : 'Yes, Accept $10'}
+          {success ? 'Success!' : isLoading ? 'Processing...' : 'Yes, Accept $100'}
         </button>
       </div>
 

@@ -1,8 +1,7 @@
 import "https://early.webawesome.com/webawesome@3.0.0-alpha.11/dist/components/dialog/dialog.js"
 import("https://cdn.jsdelivr.net/npm/virto-components@0.1.11/dist/virto-components.min.js")
 
-// import SDK from "https://cdn.jsdelivr.net/npm/@virtonetwork/sdk@0.0.4-alpha.13/dist/esm/sdk.js";
-import SDK from "http://localhost:8081/dist/esm/sdk.js"
+import SDK from "https://cdn.jsdelivr.net/npm/@virtonetwork/sdk@0.0.4-alpha.15/dist/esm/sdk.js";
 
 const tagFn = (fn) => (strings, ...parts) => fn(parts.reduce((tpl, value, i) => `${tpl}${strings[i]}${value}`, "").concat(strings[parts.length]))
 const html = tagFn((s) => new DOMParser().parseFromString(`<template>${s}</template>`, 'text/html').querySelector('template'));
@@ -310,9 +309,9 @@ export class VirtoConnect extends HTMLElement {
 
     const successMsg = document.createElement("div");
     if (faucetAccepted && faucetResult) {
-      successMsg.textContent = "Registration successful! Your welcome bonus has been processed. You can now sign in.";
+      successMsg.textContent = "Success! Your welcome bonus has been added to your account. You can now sign in.";
     } else {
-      successMsg.textContent = "Registration successful! You can now sign in.";
+      successMsg.textContent = "Success! You can now sign in.";
     }
     successMsg.style.cssText = `
       color: #4caf50 !important;
