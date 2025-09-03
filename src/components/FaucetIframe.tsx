@@ -63,7 +63,7 @@ const FaucetIframe: React.FC<FaucetIframeProps> = ({
       </p>
       
       <p className="faucet-benefit-note">
-        ✨ Bonus: With membership, transaction fees are waived – verify this after your first transaction
+        ✨ Bonus: With membership, transaction fees are free – You can verify this by checking your balance after any transaction
       </p>
       
       <div className="faucet-amount">
