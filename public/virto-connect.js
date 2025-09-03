@@ -200,6 +200,7 @@ export class VirtoConnect extends HTMLElement {
         }
         if (event.type === 'failed') {
           console.log('Transaction failed:', event.transaction);
+          console.error('error', JSON.stringify(event.transaction));
         }
       });
 
@@ -241,9 +242,15 @@ export class VirtoConnect extends HTMLElement {
     switch (this.currentFormType) {
       case "register":
         const nameInput = this.shadowRoot.querySelector('virto-input[name="name"]');
-        if (nameInput) {
-          nameInput.value = "";
-        }
+        const registerUsernameInput = this.shadowRoot.querySelector('virto-input[name="username"]');
+        customElements.whenDefined('virto-input').then(() => {
+          if (nameInput) {
+            nameInput.value = "";
+          }
+          if (registerUsernameInput) {
+            registerUsernameInput.value = "";
+          }
+        });
         break;
       case "login":
         const lastUserId = localStorage.getItem('lastUserId');
@@ -419,12 +426,18 @@ export class VirtoConnect extends HTMLElement {
     const form = this.shadowRoot.querySelector("#register-form");
     const registerButton = this.shadowRoot.querySelector("#action-button");
     console.log("Register button:", registerButton);
-    const formData = new FormData(form);
-    const username = formData.get("username");
-    const name = formData.get("name");
+    
+    // Wait for custom elements to be defined and get values directly from inputs
+    await customElements.whenDefined('virto-input');
+    
+    const nameInput = this.shadowRoot.querySelector('virto-input[name="name"]');
+    const usernameInput = this.shadowRoot.querySelector('virto-input[name="username"]');
+    
+    const name = nameInput ? nameInput.value : "";
+    const username = usernameInput ? usernameInput.value : "";
 
-    console.log("Name from FormData:", name);
-    console.log("Username from FormData:", username);
+    console.log("Name from Input:", name);
+    console.log("Username from Input:", username);
 
     // Validate required fields
     if (!name || name.trim() === "") {
@@ -500,7 +513,7 @@ export class VirtoConnect extends HTMLElement {
     const user = {
       profile: {
         id: username,
-        name: formData.get("name"),
+        name: name,
         displayName: username,
       },
       metadata: {},
@@ -544,8 +557,14 @@ export class VirtoConnect extends HTMLElement {
     const form = this.shadowRoot.querySelector("#login-form");
     const loginButton = this.shadowRoot.querySelector("#action-button");
     console.log("Login button:", loginButton);
-    const formData = new FormData(form);
-    const username = formData.get("username");
+    
+    // Wait for custom elements to be defined and get values directly from inputs
+    await customElements.whenDefined('virto-input');
+    
+    const usernameInput = this.shadowRoot.querySelector('virto-input[name="username"]');
+    const username = usernameInput ? usernameInput.value : "";
+
+    console.log("Username from Input:", username);
 
     // Validate required fields
     if (!username || username.trim() === "") {

@@ -301,13 +301,13 @@ const DemoTab: React.FC<DemoTabProps> = ({ onAuthSuccess, onAuthError }) => {
 
     try {
       setBalance('Loading...');
-
-      const userAddr = sdk.transfer.getAddressFromAuthenticator(sdk.auth.passkeysAuthenticator);
-      setUserAddress(userAddr);
-
-      const balanceData = await sdk.transfer.getBalance(userAddr);
-      const balanceFormatted = sdk.transfer.formatAmount(balanceData.transferable);
+      console.log(sdk.auth.passkeysAuthenticator.userId)
+      const {address} = await sdk.transfer.getUserInfo(sdk.auth.passkeysAuthenticator.userId);
+      const balanceData = await sdk.transfer.getBalanceByUsername(sdk.auth.passkeysAuthenticator.userId);
+      const balanceFormatted = sdk.transfer.formatAmount(balanceData.transferable, 10);
+      console.log("balanceData", balanceData)
       setBalance(`${balanceFormatted} PAS`);
+      setUserAddress(address);
     } catch (error) {
       console.error('Balance loading failed:', error);
       setBalance('Error loading balance');
@@ -377,13 +377,13 @@ const DemoTab: React.FC<DemoTabProps> = ({ onAuthSuccess, onAuthError }) => {
         return;
       }
 
-      const amountInPlanck = sdk.transfer.parseAmount(transferAmount);
-      const userAddr = sdk.transfer.getAddressFromAuthenticator(sdk.auth.passkeysAuthenticator);
-      const balanceData = await sdk.transfer.getBalance(userAddr);
+      const amountInPlanck = sdk.transfer.parseAmount(transferAmount, 10);
+      console.log("amountInPlanck", amountInPlanck)
+      const balanceData = await sdk.transfer.getBalanceByUsername(sdk.auth.passkeysAuthenticator.userId);
 
       if (balanceData.transferable < amountInPlanck) {
-        setError(`Insufficient balance. You have ${sdk.transfer.formatAmount(balanceData.transferable)} PAS`);
-        showErrorNotification("Insufficient Balance", `Insufficient balance. You have ${sdk.transfer.formatAmount(balanceData.transferable)} PAS`);
+        setError(`Insufficient balance. You have ${sdk.transfer.formatAmount(balanceData.transferable, 10)} PAS`);
+        showErrorNotification("Insufficient Balance", `Insufficient balance. You have ${sdk.transfer.formatAmount(balanceData.transferable, 10)} PAS`);
         return;
       }
 
@@ -474,7 +474,7 @@ const DemoTab: React.FC<DemoTabProps> = ({ onAuthSuccess, onAuthError }) => {
       const sdk = userSession.sdk;
       const powerCompanyAddress = "5DS4XWXWzAimdj8GR5w1ZepsUZUUPN96YxL8LEaWa3GRUKfC";
       const billAmount = "0.1";
-      const amountInPlanck = sdk.transfer.parseAmount(billAmount);
+      const amountInPlanck = sdk.transfer.parseAmount(billAmount, 10);
 
       const transferExtrinsic = await sdk.transfer.createTransferExtrinsic({
         dest: powerCompanyAddress,
@@ -549,12 +549,12 @@ const DemoTab: React.FC<DemoTabProps> = ({ onAuthSuccess, onAuthError }) => {
 
       console.log('Creating transfer extrinsic with:', {
         dest: destinationAddress,
-        value: sdk.transfer.parseAmount(transferAmount)
+        value: sdk.transfer.parseAmount(transferAmount, 10)
       });
 
       const transferExtrinsic = await sdk.transfer.createTransferExtrinsic({
         dest: destinationAddress,
-        value: sdk.transfer.parseAmount(transferAmount)
+        value: sdk.transfer.parseAmount(transferAmount, 10)
       });
 
       console.log('Transfer extrinsic result:', transferExtrinsic);
@@ -637,7 +637,7 @@ const DemoTab: React.FC<DemoTabProps> = ({ onAuthSuccess, onAuthError }) => {
     try {
       const transferExtrinsic = await sdk.transfer.createTransferExtrinsic({
         dest: '5DS4XWXWzAimdj8GR5w1ZepsUZUUPN96YxL8LEaWa3GRUKfC',
-        value: sdk.transfer.parseAmount('0.1')
+        value: sdk.transfer.parseAmount('0.1', 10)
       });
 
       const remarkExtrinsic = await sdk.system.createRemarkExtrinsic({
