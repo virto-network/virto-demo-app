@@ -82,7 +82,7 @@ const FaucetIframe: React.FC<FaucetIframeProps> = ({
         fontSize: 'clamp(0.875rem, 3vw, 1rem)',
         maxWidth: '100%'
       }}>
-        Congratulations! You can receive free tokens to start using the platform and cover transaction fees.
+        Congratulations! You can receive free tokens to start using the platform and a membership to avoid paying transaction fees.
       </p>
       
       <div style={{
