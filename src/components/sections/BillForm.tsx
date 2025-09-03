@@ -12,8 +12,6 @@ interface BillFormProps {
 const BillForm: React.FC<BillFormProps> = ({
   billPeriod,
   setBillPeriod,
-  isLoading,
-  onPay,
   onCopyExtrinsic
 }) => {
   return (
