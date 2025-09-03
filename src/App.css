@@ -2454,6 +2454,14 @@ body {
     height: 48px;
   }
   
+  .provider-details h5 {
+    font-size: 1rem;
+  }
+  
+  .provider-details p {
+    font-size: 0.85rem;
+  }
+  
   .bill-amount {
     padding: 20px;
   }
@@ -2630,6 +2638,161 @@ body {
   cursor: not-allowed;
   box-shadow: none;
   transform: none;
+}
+
+/* ===== FAUCET IFRAME STYLES ===== */
+
+.faucet-container {
+  margin: 0;
+  padding: 1.5rem;
+  font-family: var(--font-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  text-align: center;
+  box-sizing: border-box;
+  background: white;
+  flex: 1;
+}
+
+.faucet-title {
+  color: var(--dark-green);
+  margin: 0 0 1rem 0;
+  font-size: clamp(1.25rem, 4vw, 1.5rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.faucet-description {
+  color: var(--darkslategray);
+  margin: 0 0 0.75rem 0;
+  line-height: 1.5;
+  font-size: clamp(0.875rem, 3vw, 1rem);
+  max-width: 100%;
+  font-weight: 500;
+}
+
+.faucet-benefit-note {
+  color: #64748b;
+  margin: 0 0 1.5rem 0;
+  font-size: clamp(0.75rem, 2.5vw, 0.85rem);
+  line-height: 1.4;
+  max-width: 100%;
+  font-style: italic;
+  opacity: 0.9;
+}
+
+.faucet-amount {
+  color: var(--green);
+  font-size: clamp(1.5rem, 6vw, 2rem);
+  font-weight: 700;
+  margin: 0 0 1.5rem 0;
+  text-shadow: 0 2px 4px color-mix(in srgb, var(--green) 20%, transparent);
+}
+
+.faucet-question {
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+  color: var(--dark-green);
+  font-size: clamp(0.875rem, 3vw, 1rem);
+}
+
+.faucet-error {
+  color: #dc2626;
+  margin: 1rem 0;
+  padding: 0.75rem;
+  background: #fee2e2;
+  border-radius: 8px;
+  font-size: clamp(0.8rem, 3vw, 0.9rem);
+  animation: shake 0.5s ease-in-out;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #fecaca;
+  font-weight: 500;
+}
+
+.faucet-buttons {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+}
+
+.faucet-button {
+  padding: 0.75rem 1.25rem;
+  border: none;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: clamp(0.8rem, 3vw, 0.9rem);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 100px;
+  flex: 0 1 auto;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.faucet-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.faucet-button-decline {
+  background: #f8fafc;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.faucet-button-decline:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
+}
+
+.faucet-button-accept {
+  background: var(--green);
+  color: white;
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--green) 25%, transparent);
+  min-width: 120px;
+}
+
+.faucet-button-accept:hover:not(:disabled) {
+  background: var(--dark-green);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--green) 35%, transparent);
+}
+
+.faucet-button-accept.success {
+  background: #059669;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+/* Responsive adjustments for faucet */
+@media (max-width: 480px) {
+  .faucet-container {
+    padding: 1.25rem;
+  }
+  
+  .faucet-buttons {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .faucet-button {
+    width: 100%;
+    max-width: 200px;
+  }
 }
 
  
