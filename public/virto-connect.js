@@ -233,20 +233,29 @@ export class VirtoConnect extends HTMLElement {
         break;
       case "login":
         formTemplate = loginFormTemplate;
-        
         break;
     }
 
     this.contentSlot.appendChild(formTemplate.content.cloneNode(true));
     
-    const lastUserId = localStorage.getItem('lastUserId');
-    if (lastUserId && lastUserId.trim() !== '') {
-      const usernameInput = this.shadowRoot.querySelector('virto-input[name="username"]');
-      if (usernameInput) {
-        customElements.whenDefined('virto-input').then(() => {
-          usernameInput.value = lastUserId;
-        });
-      }
+    switch (this.currentFormType) {
+      case "register":
+        const nameInput = this.shadowRoot.querySelector('virto-input[name="name"]');
+        if (nameInput) {
+          nameInput.value = "";
+        }
+        break;
+      case "login":
+        const lastUserId = localStorage.getItem('lastUserId');
+        if (lastUserId && lastUserId.trim() !== '') {
+          const usernameInput = this.shadowRoot.querySelector('virto-input[name="username"]');
+          if (usernameInput) {
+            customElements.whenDefined('virto-input').then(() => {
+              usernameInput.value = lastUserId;
+            });
+          }
+        }
+        break;
     }
     
     this.attachFormLinkEvents();
@@ -378,12 +387,6 @@ export class VirtoConnect extends HTMLElement {
         goToRegister.addEventListener("click", (e) => {
           e.preventDefault();
           this.currentFormType = "register";
-          const usernameInput = this.shadowRoot.querySelector('virto-input[name="username"]');
-          if (usernameInput) {
-            customElements.whenDefined('virto-input').then(() => {
-              usernameInput.value = "";
-            });
-          }
           this.renderCurrentForm();
         });
     }
@@ -418,9 +421,35 @@ export class VirtoConnect extends HTMLElement {
     console.log("Register button:", registerButton);
     const formData = new FormData(form);
     const username = formData.get("username");
+    const name = formData.get("name");
 
-    console.log("Name from FormData:", formData.get("name"));
+    console.log("Name from FormData:", name);
     console.log("Username from FormData:", username);
+
+    // Validate required fields
+    if (!name || name.trim() === "") {
+      const errorMsg = this.shadowRoot.querySelector("#register-error");
+      if (errorMsg) {
+        errorMsg.textContent = "Name is required. Please enter your name.";
+        errorMsg.style.display = "block";
+      }
+      return;
+    }
+
+    if (!username || username.trim() === "") {
+      const errorMsg = this.shadowRoot.querySelector("#register-error");
+      if (errorMsg) {
+        errorMsg.textContent = "Username is required. Please enter your username.";
+        errorMsg.style.display = "block";
+      }
+      return;
+    }
+
+    // Clear any previous error messages
+    const errorMsg = this.shadowRoot.querySelector("#register-error");
+    if (errorMsg) {
+      errorMsg.style.display = "none";
+    }
 
     this.dispatchEvent(new CustomEvent('register-start', { bubbles: true }));
     registerButton.setAttribute("loading", "");
@@ -517,6 +546,22 @@ export class VirtoConnect extends HTMLElement {
     console.log("Login button:", loginButton);
     const formData = new FormData(form);
     const username = formData.get("username");
+
+    // Validate required fields
+    if (!username || username.trim() === "") {
+      const errorMsg = this.shadowRoot.querySelector("#login-error");
+      if (errorMsg) {
+        errorMsg.textContent = "Username is required. Please enter your username.";
+        errorMsg.style.display = "block";
+      }
+      return;
+    }
+
+    // Clear any previous error messages
+    const errorMsg = this.shadowRoot.querySelector("#login-error");
+    if (errorMsg) {
+      errorMsg.style.display = "none";
+    }
 
     loginButton.setAttribute("loading", "");
     loginButton.setAttribute("disabled", "");
