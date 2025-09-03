@@ -79,19 +79,37 @@ const BillForm: React.FC<BillFormProps> = ({
       <div className="advanced-link-section">
         <span>For advanced users: </span>
         <button 
-          className="tertiary-button"
+          className="tertiary-button disabled"
           onClick={onCopyExtrinsic}
+          disabled={true}
         >
           Copy Extrinsic
         </button>
       </div>
       
+      {/* Temporary notice message */}
+      <div className="temporary-notice">
+        <div className="notice-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" 
+            fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" 
+            strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+        </div>
+        <div className="notice-content">
+          <p><strong>Funcionalidad temporalmente deshabilitada</strong></p>
+          <p>Disculpa las molestias. Estamos trabajando en mejoras para ofrecerte una mejor experiencia. Esta función estará disponible pronto.</p>
+        </div>
+      </div>
+      
       <div className="button-wrapper">
         {/* @ts-ignore */}
         <virto-button
-          label={isLoading ? "Processing Payment..." : "Pay Bill & Record"}
-          onClick={onPay}
-          disabled={isLoading}
+          label="Funcionalidad temporalmente deshabilitada"
+          onClick={() => {}}
+          disabled={true}
         />
       </div>
     </div>
