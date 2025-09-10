@@ -3,10 +3,77 @@ import("https://cdn.jsdelivr.net/npm/virto-components@0.1.11/dist/virto-componen
 
 import SDK from "https://cdn.jsdelivr.net/npm/@virtonetwork/sdk@0.0.4-alpha.16/dist/esm/sdk.js";
 
+import * as Sentry from "https://cdn.jsdelivr.net/npm/@sentry/browser@7.114.0/+esm"
+
+const initSentry = () => {
+  try {
+    Sentry.init({
+      dsn: "https://906bcc1f831254f30f2f252f1bf64d92@o4509987096166400.ingest.de.sentry.io/4509992114192464",
+      environment: window.SENTRY_ENV || 'production',
+      tracesSampleRate: 0.1,
+      sampleRate: 1.0, 
+      debug: false,
+      release: "0.0.1",
+      beforeSend(event) {
+        event.contexts = {
+          ...event.contexts
+        };
+        
+        event.tags = {
+          ...event.tags,
+          component: 'virto-connect',
+          version: '0.0.1'
+        };
+        
+        if (window.VIRTO_USER_ID) {
+          event.user = {
+            id: window.VIRTO_USER_ID,
+            username: window.VIRTO_USER_ID
+          };
+        }
+        
+        if (event.exception) {
+          event.exception.values?.forEach(exception => {
+            if (exception.stacktrace?.frames) {
+              exception.stacktrace.frames.forEach(frame => {
+                if (frame.filename) {
+                  frame.filename = frame.filename.replace(/[?&]token=[^&]+/gi, '?token=***');
+                }
+              });
+            }
+          });
+        }
+        
+        return event;
+      },
+      beforeBreadcrumb(breadcrumb) {
+        if (breadcrumb.category === 'console' && breadcrumb.level === 'debug') {
+          return null;
+        }
+        
+        if (breadcrumb.category === 'xhr' || breadcrumb.category === 'fetch') {
+          if (breadcrumb.data?.status_code >= 400) {
+            breadcrumb.level = 'error';
+            breadcrumb.message = `Network request failed: ${breadcrumb.data.method} ${breadcrumb.data.url}`;
+          }
+        }
+        
+        return breadcrumb;
+      }
+    });
+    
+    console.log('Sentry initialized for Virto Connect');
+  } catch (error) {
+    console.warn('Failed to initialize Sentry:', error);
+  }
+};
+
+initSentry();
+
 const tagFn = (fn) => (strings, ...parts) => fn(parts.reduce((tpl, value, i) => `${tpl}${strings[i]}${value}`, "").concat(strings[parts.length]))
 const html = tagFn((s) => new DOMParser().parseFromString(`<template>${s}</template>`, 'text/html').querySelector('template'));
 const css = tagFn((s) => s)
-const DEFAULT_SERVER = 'https://demo.virto.one/api'
+const DEFAULT_SERVER = 'http://localhost:3000/api'
 
 const dialogTp = html`
     <wa-dialog light-dismiss with-header with-footer>
@@ -557,6 +624,13 @@ export class VirtoConnect extends HTMLElement {
 
     if (!this.providerUrl) {
       console.warn("Provider URL not set. SDK initialization deferred.");
+      if (window.Sentry) {
+        Sentry.addBreadcrumb({
+          message: 'SDK initialization deferred - no provider URL',
+          level: 'warning',
+          category: 'sdk'
+        });
+      }
       return;
     }
 
@@ -566,7 +640,14 @@ export class VirtoConnect extends HTMLElement {
         provider_url: this.providerUrl,
         confirmation_level: 'submitted',
         onProviderStatusChange: (status) => {
-          // Dispatch custom event for React components to listen to
+          if (window.Sentry) {
+            Sentry.addBreadcrumb({
+              message: `Provider status changed to: ${status}`,
+              level: 'info',
+              category: 'provider'
+            });
+          }
+          
           const customEvent = new CustomEvent('providerStatusChange', {
             detail: status,
             bubbles: true,
@@ -578,6 +659,18 @@ export class VirtoConnect extends HTMLElement {
 
       this.sdk.onTransactionUpdate((event) => {
         console.log('event', event);
+        
+        if (window.Sentry) {
+          Sentry.addBreadcrumb({
+            message: `Transaction ${event.type}`,
+            level: event.type === 'failed' ? 'error' : 'info',
+            category: 'transaction',
+            data: {
+              type: event.type,
+              transactionId: event.transaction?.id || 'unknown'
+            }
+          });
+        }
         
         // Dispatch custom event for React components to listen to
         const customEvent = new CustomEvent('transactionUpdate', {
@@ -596,12 +689,51 @@ export class VirtoConnect extends HTMLElement {
         if (event.type === 'failed') {
           console.log('Transaction failed:', event.transaction);
           console.error('error', JSON.stringify(event.transaction));
+          
+          if (window.Sentry) {
+            Sentry.captureException(new Error('Transaction failed'), {
+              tags: {
+                component: 'virto-connect',
+                operation: 'transaction'
+              },
+              extra: {
+                transaction: event.transaction,
+                event: event
+              }
+            });
+          }
         }
       });
 
       console.log(`Virto SDK initialized with server: ${this.serverUrl} and provider: ${this.providerUrl}`);
+      
+      if (window.Sentry) {
+        Sentry.addBreadcrumb({
+          message: 'SDK initialized successfully',
+          level: 'info',
+          category: 'sdk',
+          data: {
+            serverUrl: this.serverUrl,
+            providerUrl: this.providerUrl
+          }
+        });
+      }
+      
     } catch (error) {
       console.error("Failed to initialize SDK:", error);
+      
+      if (window.Sentry) {
+        Sentry.captureException(error, {
+          tags: {
+            component: 'virto-connect',
+            operation: 'sdk-init'
+          },
+          extra: {
+            serverUrl: this.serverUrl,
+            providerUrl: this.providerUrl
+          }
+        });
+      }
     }
   }
 
@@ -822,128 +954,299 @@ export class VirtoConnect extends HTMLElement {
     const registerButton = this.shadowRoot.querySelector("#action-button");
     console.log("Register button:", registerButton);
     
-    // Wait for custom elements to be defined and get values directly from inputs
-    await customElements.whenDefined('virto-input');
-    
-    const nameInput = this.shadowRoot.querySelector('virto-input[name="name"]');
-    const usernameInput = this.shadowRoot.querySelector('virto-input[name="username"]');
-    
-    const name = nameInput ? nameInput.value : "";
-    const username = usernameInput ? usernameInput.value : "";
-
-    console.log("Name from Input:", name);
-    console.log("Username from Input:", username);
-
-    // Validate required fields
-    if (!name || name.trim() === "") {
-      const errorMsg = this.shadowRoot.querySelector("#register-error");
-      if (errorMsg) {
-        errorMsg.textContent = "Name is required. Please enter your name.";
-        errorMsg.style.display = "block";
-      }
-      return;
-    }
-
-    if (!username || username.trim() === "") {
-      const errorMsg = this.shadowRoot.querySelector("#register-error");
-      if (errorMsg) {
-        errorMsg.textContent = "Username is required. Please enter your username.";
-        errorMsg.style.display = "block";
-      }
-      return;
-    }
-
-    // Clear any previous error messages
-    const errorMsg = this.shadowRoot.querySelector("#register-error");
-    if (errorMsg) {
-      errorMsg.style.display = "none";
-    }
-
-    this.dispatchEvent(new CustomEvent('register-start', { bubbles: true }));
-    registerButton.setAttribute("loading", "");
-    registerButton.setAttribute("disabled", "");
-
-    // Check if user is already registered
+    // Start Sentry transaction for registration flow (only if Sentry is available)
+    let transaction = null;
     try {
-      const isRegistered = await this.sdk.auth.isRegistered(username);
-      console.log({ isRegistered })
-      if (isRegistered) {
-        console.log(`User ${username} is already registered`);
-
-        this.buttonsSlot.innerHTML = "";
-
-        const errorMsg = document.createElement("div");
-        errorMsg.textContent = "This user is already registered. Please sign in instead.";
-        errorMsg.style.color = "#d32f2f";
-        errorMsg.style.marginBottom = "10px";
-
-        const existingErrorMsg = this.contentSlot.querySelector(".error-message");
-        if (existingErrorMsg) {
-          existingErrorMsg.remove();
-        }
-
-        errorMsg.className = "error-message";
-        this.contentSlot.appendChild(errorMsg);
-
-        const cancelButton = document.createElement("virto-button");
-        cancelButton.setAttribute("label", "Cancel");
-        cancelButton.addEventListener("click", () => this.close());
-        this.buttonsSlot.appendChild(cancelButton);
-
-        const loginButton = document.createElement("virto-button");
-        loginButton.setAttribute("label", "Continue with Sign In");
-        loginButton.addEventListener("click", () => {
-          errorMsg.remove();
-          this.currentFormType = "register";
-          this.renderCurrentForm();
+      if (window.Sentry && Sentry.startTransaction) {
+        transaction = Sentry.startTransaction({
+          name: 'User Registration',
+          op: 'user.register'
         });
-        this.buttonsSlot.appendChild(loginButton);
+        
+        Sentry.configureScope(scope => {
+          scope.setTag('component', 'virto-connect');
+          scope.setTag('operation', 'register');
+        });
+      }
+    } catch (sentryError) {
+      console.warn('Sentry not available for transaction tracking:', sentryError);
+    }
+    
+    try {
+      await customElements.whenDefined('virto-input');
+      
+      const nameInput = this.shadowRoot.querySelector('virto-input[name="name"]');
+      const usernameInput = this.shadowRoot.querySelector('virto-input[name="username"]');
+      
+      const name = nameInput ? nameInput.value : "";
+      const username = usernameInput ? usernameInput.value : "";
 
+      console.log("Name from Input:", name);
+      console.log("Username from Input:", username);
+      
+      if (window.Sentry) {
+        Sentry.addBreadcrumb({
+          message: 'Registration form validation started',
+          level: 'info',
+          category: 'validation',
+          data: {
+            hasName: !!name,
+            hasUsername: !!username,
+            nameLength: name.length,
+            usernameLength: username.length
+          }
+        });
+      }
+
+      // Validate required fields
+      if (!name || name.trim() === "") {
+        const errorMsg = this.shadowRoot.querySelector("#register-error");
+        if (errorMsg) {
+          errorMsg.textContent = "Name is required. Please enter your name.";
+          errorMsg.style.display = "block";
+        }
+        
+        if (window.Sentry) Sentry.captureMessage('Registration validation failed - missing name', 'warning');
+        if (transaction) {
+          transaction.setStatus('invalid_argument');
+          transaction.finish();
+        }
         return;
       }
-    } catch (error) {
-      console.error('Error checking registration status:', error);
-    }
 
-    const user = {
-      profile: {
-        id: username,
-        name: name,
-        displayName: username,
-      },
-      metadata: {},
-    };
-
-    try {
-      console.log('Attempting to register user:', user);
-      const result = await this.sdk.auth.register(user);
-      console.log('Registration successful:', result);
-      
-      localStorage.setItem('lastUserId', username);
-
-      // console.log("Address:", result.address);
-
-      // Show faucet confirmation instead of direct success
-      this.showFaucetConfirmation(username);
-
-      this.dispatchEvent(new CustomEvent('register-success', { bubbles: true }));
-    } catch (error) {
-      console.error('Registration failed:', error);
-
-      const errorMsg = this.shadowRoot.querySelector("#register-error");
-      if (errorMsg) {
-        errorMsg.textContent = "Registration failed. Please try again.";
-        errorMsg.style.display = "block";
+      if (!username || username.trim() === "") {
+        const errorMsg = this.shadowRoot.querySelector("#register-error");
+        if (errorMsg) {
+          errorMsg.textContent = "Username is required. Please enter your username.";
+          errorMsg.style.display = "block";
+        }
+        
+        if (window.Sentry) Sentry.captureMessage('Registration validation failed - missing username', 'warning');
+        if (transaction) {
+          transaction.setStatus('invalid_argument');
+          transaction.finish();
+        }
+        return;
       }
 
-      this.dispatchEvent(new CustomEvent('register-error', {
-        bubbles: true,
-        detail: { error }
-      }));
+      // Clear any previous error messages
+      const errorMsg = this.shadowRoot.querySelector("#register-error");
+      if (errorMsg) {
+        errorMsg.style.display = "none";
+      }
+
+      this.dispatchEvent(new CustomEvent('register-start', { bubbles: true }));
+      registerButton.setAttribute("loading", "");
+      registerButton.setAttribute("disabled", "");
+      
+      if (window.Sentry) {
+        Sentry.addBreadcrumb({
+          message: 'Registration process started',
+          level: 'info',
+          category: 'registration'
+        });
+      }
+
+      // Check if user is already registered
+      const registrationCheckSpan = transaction ? transaction.startChild({
+        op: 'auth.check_registration',
+        description: 'Check if user is already registered'
+      }) : null;
+
+      try {
+        const isRegistered = await this.sdk.auth.isRegistered(username);
+        console.log({ isRegistered })
+        
+        if (registrationCheckSpan) {
+          registrationCheckSpan.setStatus('ok');
+          registrationCheckSpan.finish();
+        }
+        
+        if (isRegistered) {
+          console.log(`User ${username} is already registered`);
+          
+          if (window.Sentry) {
+            Sentry.captureMessage('Registration attempted for existing user', 'info', {
+              extra: { username }
+            });
+          }
+
+          this.buttonsSlot.innerHTML = "";
+
+          const errorMsg = document.createElement("div");
+          errorMsg.textContent = "This user is already registered. Please sign in instead.";
+          errorMsg.style.color = "#d32f2f";
+          errorMsg.style.marginBottom = "10px";
+
+          const existingErrorMsg = this.contentSlot.querySelector(".error-message");
+          if (existingErrorMsg) {
+            existingErrorMsg.remove();
+          }
+
+          errorMsg.className = "error-message";
+          this.contentSlot.appendChild(errorMsg);
+
+          const cancelButton = document.createElement("virto-button");
+          cancelButton.setAttribute("label", "Cancel");
+          cancelButton.addEventListener("click", () => this.close());
+          this.buttonsSlot.appendChild(cancelButton);
+
+          const loginButton = document.createElement("virto-button");
+          loginButton.setAttribute("label", "Continue with Sign In");
+          loginButton.addEventListener("click", () => {
+            errorMsg.remove();
+            this.currentFormType = "register";
+            this.renderCurrentForm();
+          });
+          this.buttonsSlot.appendChild(loginButton);
+
+          if (transaction) {
+            transaction.setStatus('already_exists');
+            transaction.finish();
+          }
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking registration status:', error);
+        
+        if (registrationCheckSpan) {
+          registrationCheckSpan.setStatus('internal_error');
+          registrationCheckSpan.finish();
+        }
+        
+        if (window.Sentry) {
+          Sentry.captureException(error, {
+            tags: {
+              component: 'virto-connect',
+              operation: 'check-registration'
+            },
+            extra: { username }
+          });
+        }
+      }
+
+      const user = {
+        profile: {
+          id: username,
+          name: name,
+          displayName: username,
+        },
+        metadata: {},
+      };
+      
+      // Actual registration
+      const registrationSpan = transaction ? transaction.startChild({
+        op: 'auth.register',
+        description: 'Register new user'
+      }) : null;
+
+      try {
+        console.log('Attempting to register user:', user);
+        
+        if (window.Sentry) {
+          Sentry.addBreadcrumb({
+            message: 'Starting SDK registration',
+            level: 'info',
+            category: 'registration',
+            data: { username, name }
+          });
+        }
+        
+        const result = await this.sdk.auth.register(user);
+        console.log('Registration successful:', result);
+        
+        if (registrationSpan) {
+          registrationSpan.setStatus('ok');
+          registrationSpan.finish();
+        }
+        
+        localStorage.setItem('lastUserId', username);
+
+        // console.log("Address:", result.address);
+        
+        if (window.Sentry) {
+          Sentry.addBreadcrumb({
+            message: 'Registration completed successfully',
+            level: 'info',
+            category: 'registration',
+            data: { username }
+          });
+        }
+
+        // Show faucet confirmation instead of direct success
+        this.showFaucetConfirmation(username);
+
+        this.dispatchEvent(new CustomEvent('register-success', { bubbles: true }));
+        
+        if (transaction) {
+          transaction.setStatus('ok');
+        }
+        
+      } catch (error) {
+        console.error('Registration failed:', error);
+        
+        if (registrationSpan) {
+          registrationSpan.setStatus('internal_error');
+          registrationSpan.finish();
+        }
+
+        const errorMsg = this.shadowRoot.querySelector("#register-error");
+        if (errorMsg) {
+          errorMsg.textContent = "Registration failed. Please try again.";
+          errorMsg.style.display = "block";
+        }
+        
+        // Capture detailed registration error
+        if (window.Sentry) {
+          Sentry.captureException(error, {
+            tags: {
+              component: 'virto-connect',
+              operation: 'register'
+            },
+            extra: {
+              username,
+              name,
+              serverUrl: this.serverUrl,
+              providerUrl: this.providerUrl,
+              userAgent: navigator.userAgent,
+              errorDetails: error.message || 'Unknown error'
+            },
+            fingerprint: ['virto-connect', 'registration-failed', username]
+          });
+        }
+
+        this.dispatchEvent(new CustomEvent('register-error', {
+          bubbles: true,
+          detail: { error }
+        }));
+        
+        if (transaction) {
+          transaction.setStatus('internal_error');
+        }
+      }
+    } catch (globalError) {
+      console.error('Unexpected error in registration flow:', globalError);
+      
+      if (window.Sentry) {
+        Sentry.captureException(globalError, {
+          tags: {
+            component: 'virto-connect',
+            operation: 'register-flow'
+          }
+        });
+      }
+      
+      if (transaction) {
+        transaction.setStatus('internal_error');
+      }
     } finally {
       if (registerButton) {
         registerButton.removeAttribute("loading");
         registerButton.removeAttribute("disabled");
+      }
+      
+      if (transaction) {
+        transaction.finish();
       }
     }
   }
@@ -953,87 +1256,229 @@ export class VirtoConnect extends HTMLElement {
     const loginButton = this.shadowRoot.querySelector("#action-button");
     console.log("Login button:", loginButton);
     
-    // Wait for custom elements to be defined and get values directly from inputs
-    await customElements.whenDefined('virto-input');
-    
-    const usernameInput = this.shadowRoot.querySelector('virto-input[name="username"]');
-    const username = usernameInput ? usernameInput.value : "";
-
-    console.log("Username from Input:", username);
-
-    // Validate required fields
-    if (!username || username.trim() === "") {
-      const errorMsg = this.shadowRoot.querySelector("#login-error");
-      if (errorMsg) {
-        errorMsg.textContent = "Username is required. Please enter your username.";
-        errorMsg.style.display = "block";
+    // Start Sentry transaction for login flow (only if Sentry is available)
+    let transaction = null;
+    try {
+      if (window.Sentry && Sentry.startTransaction) {
+        transaction = Sentry.startTransaction({
+          name: 'User Login',
+          op: 'user.login'
+        });
+        
+        Sentry.configureScope(scope => {
+          scope.setTag('component', 'virto-connect');
+          scope.setTag('operation', 'login');
+        });
       }
-      return;
+    } catch (sentryError) {
+      console.warn('Sentry not available for transaction tracking:', sentryError);
     }
-
-    // Clear any previous error messages
-    const errorMsg = this.shadowRoot.querySelector("#login-error");
-    if (errorMsg) {
-      errorMsg.style.display = "none";
-    }
-
-    loginButton.setAttribute("loading", "");
-    loginButton.setAttribute("disabled", "");
-
-    if (!this.sdk || !this.sdk.auth) {
-      const errorMsg = document.createElement("div");
-      errorMsg.textContent = "Please enable Demo Mode to initialize the connection.";
-      errorMsg.className = "error-message";
-      this.contentSlot.appendChild(errorMsg);
-      return;
-    }
-
-    this.dispatchEvent(new CustomEvent('login-start', { bubbles: true }));
-    
-    localStorage.setItem('lastUserId', username);
     
     try {
-      const result = await this.sdk.auth.connect(username);
-      console.log('Login successful:', result);
+      // Wait for custom elements to be defined and get values directly from inputs
+      await customElements.whenDefined('virto-input');
+      
+      const usernameInput = this.shadowRoot.querySelector('virto-input[name="username"]');
+      const username = usernameInput ? usernameInput.value : "";
 
-      const successMsg = document.createElement("div");
-      successMsg.textContent = "Login successful!";
-      successMsg.style.color = "#4caf50";
-      successMsg.style.marginBottom = "10px";
-
-      this.contentSlot.innerHTML = "";
-      this.contentSlot.appendChild(successMsg);
-
-      this.buttonsSlot.innerHTML = "";
-
-      const closeBtn = document.createElement("virto-button");
-      closeBtn.setAttribute("label", "Close");
-      closeBtn.addEventListener("click", () => this.close());
-      this.buttonsSlot.appendChild(closeBtn);
-
-      this.dispatchEvent(new CustomEvent('login-success', {
-        bubbles: true,
-        detail: {
-          username
-        }
-      }));
-    } catch (error) {
-      console.error('Login failed:', error);
-
-      const errorMsg = this.shadowRoot.querySelector("#login-error");
-      if (errorMsg) {
-        errorMsg.textContent = "Login failed. Please check your username and try again.";
-        errorMsg.style.display = "block";
+      console.log("Username from Input:", username);
+      
+      if (window.Sentry) {
+        Sentry.addBreadcrumb({
+          message: 'Login form validation started',
+          level: 'info',
+          category: 'validation',
+          data: {
+            hasUsername: !!username,
+            usernameLength: username.length
+          }
+        });
       }
 
-      this.dispatchEvent(new CustomEvent('login-error', {
-        bubbles: true,
-        detail: { error }
-      }));
+      // Validate required fields
+      if (!username || username.trim() === "") {
+        const errorMsg = this.shadowRoot.querySelector("#login-error");
+        if (errorMsg) {
+          errorMsg.textContent = "Username is required. Please enter your username.";
+          errorMsg.style.display = "block";
+        }
+        
+        if (window.Sentry) Sentry.captureMessage('Login validation failed - missing username', 'warning');
+        if (transaction) {
+          transaction.setStatus('invalid_argument');
+          transaction.finish();
+        }
+        return;
+      }
+
+      // Clear any previous error messages
+      const errorMsg = this.shadowRoot.querySelector("#login-error");
+      if (errorMsg) {
+        errorMsg.style.display = "none";
+      }
+
+      loginButton.setAttribute("loading", "");
+      loginButton.setAttribute("disabled", "");
+
+      if (!this.sdk || !this.sdk.auth) {
+        const errorMsg = document.createElement("div");
+        errorMsg.textContent = "Please enable Demo Mode to initialize the connection.";
+        errorMsg.className = "error-message";
+        this.contentSlot.appendChild(errorMsg);
+        
+        if (window.Sentry) {
+          Sentry.captureMessage('Login failed - SDK not initialized', 'error', {
+            extra: {
+              hasSDK: !!this.sdk,
+              hasAuth: !!(this.sdk && this.sdk.auth),
+              serverUrl: this.serverUrl,
+              providerUrl: this.providerUrl
+            }
+          });
+        }
+        
+        if (transaction) {
+          transaction.setStatus('failed_precondition');
+          transaction.finish();
+        }
+        return;
+      }
+
+      this.dispatchEvent(new CustomEvent('login-start', { bubbles: true }));
+      
+      localStorage.setItem('lastUserId', username);
+      
+      if (window.Sentry) {
+        Sentry.addBreadcrumb({
+          message: 'Login process started',
+          level: 'info',
+          category: 'login'
+        });
+      }
+      
+      // Actual login
+      const loginSpan = transaction ? transaction.startChild({
+        op: 'auth.connect',
+        description: 'Connect user session'
+      }) : null;
+      
+      try {
+        if (window.Sentry) {
+          Sentry.addBreadcrumb({
+            message: 'Starting SDK login',
+            level: 'info',
+            category: 'login',
+            data: { username }
+          });
+        }
+        
+        const result = await this.sdk.auth.connect(username);
+        console.log('Login successful:', result);
+        
+        if (loginSpan) {
+          loginSpan.setStatus('ok');
+          loginSpan.finish();
+        }
+
+        const successMsg = document.createElement("div");
+        successMsg.textContent = "Login successful!";
+        successMsg.style.color = "#4caf50";
+        successMsg.style.marginBottom = "10px";
+
+        this.contentSlot.innerHTML = "";
+        this.contentSlot.appendChild(successMsg);
+
+        this.buttonsSlot.innerHTML = "";
+
+        const closeBtn = document.createElement("virto-button");
+        closeBtn.setAttribute("label", "Close");
+        closeBtn.addEventListener("click", () => this.close());
+        this.buttonsSlot.appendChild(closeBtn);
+        
+        if (window.Sentry) {
+          Sentry.addBreadcrumb({
+            message: 'Login completed successfully',
+            level: 'info',
+            category: 'login',
+            data: { username }
+          });
+        }
+
+        this.dispatchEvent(new CustomEvent('login-success', {
+          bubbles: true,
+          detail: {
+            username
+          }
+        }));
+        
+        if (transaction) {
+          transaction.setStatus('ok');
+        }
+        
+      } catch (error) {
+        console.error('Login failed:', error);
+        
+        if (loginSpan) {
+          loginSpan.setStatus('internal_error');
+          loginSpan.finish();
+        }
+
+        const errorMsg = this.shadowRoot.querySelector("#login-error");
+        if (errorMsg) {
+          errorMsg.textContent = "Login failed. Please check your username and try again.";
+          errorMsg.style.display = "block";
+        }
+        
+        // Capture detailed login error
+        if (window.Sentry) {
+          Sentry.captureException(error, {
+            tags: {
+              component: 'virto-connect',
+              operation: 'login'
+            },
+            extra: {
+              username,
+              serverUrl: this.serverUrl,
+              providerUrl: this.providerUrl,
+              userAgent: navigator.userAgent,
+              errorDetails: error.message || 'Unknown error'
+            },
+            fingerprint: ['virto-connect', 'login-failed', username]
+          });
+        }
+
+        this.dispatchEvent(new CustomEvent('login-error', {
+          bubbles: true,
+          detail: { error }
+        }));
+        
+        if (transaction) {
+          transaction.setStatus('internal_error');
+        }
+      }
+    } catch (globalError) {
+      console.error('Unexpected error in login flow:', globalError);
+      
+      if (window.Sentry) {
+        Sentry.captureException(globalError, {
+          tags: {
+            component: 'virto-connect',
+            operation: 'login-flow'
+          }
+        });
+      }
+      
+      if (transaction) {
+        transaction.setStatus('internal_error');
+      }
     } finally {
       if (loginButton) {
         loginButton.removeAttribute("loading");
         loginButton.removeAttribute("disabled");
+      }
+      
+      if (transaction) {
+        transaction.finish();
       }
     }
   }
