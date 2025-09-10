@@ -158,6 +158,24 @@ virto-input:focus {
   margin-bottom: 10px;
 }
 
+.disclaimer {
+  background: rgba(255, 165, 0, 0.1);
+  border: 1px solid rgba(255, 165, 0, 0.3);
+  border-radius: 6px;
+  padding: 12px;
+  margin: 12px 0;
+  font-size: 0.8rem;
+  color: #ff8c00 !important;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.disclaimer-icon {
+  display: inline-block;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
 .alternative-form {
   display: flex;
   flex-direction: column;
@@ -258,6 +276,11 @@ const registerFormTemplate = html`
             <virto-input value="" label="Username" placeholder="Enter your username" name="username" type="text" required></virto-input>
         </fieldset>
         <div id="register-error" class="error"></div>
+        <!-- Testnet Disclaimer -->
+        <div class="disclaimer">
+            <span class="disclaimer-icon">⚠️</span>
+            <strong>Testnet Notice:</strong> Due to testnet instability, authentication transactions may occasionally fail. If this happens, please wait a few minutes and try again.
+        </div>
         <!-- Sign Up Link -->
         <div class="link">
             <p class="link__text">
@@ -422,6 +445,11 @@ const loginFormTemplate = html`
             <virto-input value="" label="Username" placeholder="Enter your username" name="username" type="text" required></virto-input>
         </fieldset>
         <div id="login-error" class="error"></div>
+        <!-- Testnet Disclaimer -->
+        <div class="disclaimer">
+            <span class="disclaimer-icon">⚠️</span>
+            <strong>Testnet Notice:</strong> Due to testnet instability, authentication transactions may occasionally fail. If this happens, please wait a few minutes and try again.
+        </div>
         <!-- Sign Up Link -->
         <div class="link">
             <p class="link__text">
