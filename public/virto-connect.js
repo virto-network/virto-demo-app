@@ -285,7 +285,7 @@ const registerFormTemplate = html`
         <div class="link">
             <p class="link__text">
                 Need an account? 
-                <a href="#" id="go-to-login">Sign Up</a>
+                <a href="#" id="go-to-login">Sign In</a>
             </p>
         </div>
         <!-- Divider -->
