@@ -1101,18 +1101,16 @@ export class VirtoConnect extends HTMLElement {
 
           this.buttonsSlot.innerHTML = "";
 
-          const errorMsg = document.createElement("div");
-          errorMsg.textContent = "This user is already registered. Please sign in instead.";
-          errorMsg.style.color = "#d32f2f";
-          errorMsg.style.marginBottom = "10px";
-
-          const existingErrorMsg = this.contentSlot.querySelector(".error-message");
-          if (existingErrorMsg) {
-            existingErrorMsg.remove();
+          const errorMsg = this.shadowRoot.querySelector("#register-error");
+          if (errorMsg) {
+            errorMsg.textContent = "This user is already registered. Please sign in instead.";
+            errorMsg.style.display = "block";
           }
 
-          errorMsg.className = "error-message";
-          this.contentSlot.appendChild(errorMsg);
+          this.dispatchEvent(new CustomEvent('register-error', {
+            bubbles: true,
+            detail: { error: "This user is already registered. Please sign in instead." }
+          }));
 
           const cancelButton = document.createElement("virto-button");
           cancelButton.setAttribute("label", "Cancel");
@@ -1123,7 +1121,7 @@ export class VirtoConnect extends HTMLElement {
           loginButton.setAttribute("label", "Continue with Sign In");
           loginButton.addEventListener("click", () => {
             errorMsg.remove();
-            this.currentFormType = "register";
+            this.currentFormType = "login";
             this.renderCurrentForm();
           });
           this.buttonsSlot.appendChild(loginButton);
